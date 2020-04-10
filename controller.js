@@ -48,14 +48,35 @@ $(document).ready(function ( ) {
 	$(document).on("click", ".favoriteColor", function () {
 		var bg_color = $(this).css("background-color");
 
-		$("#color").css("background-color", bg_color);
-
 		var colors = bg_color.replace("rgb(", "").replace(")", "").split(",");
 
 		var red = parseInt(colors[0]);
 		var green = parseInt(colors[1]);
 		var blue = parseInt(colors[2]);
+		var brightness = $("input[name=brightness]").val() / 255;
+		var background = "rgb(" + red + ", " + green + ", " + blue + ", " + brightness + ")";
+
+
+		$("input[name=red]").val(red);
+		$("input[name=green]").val(green);
+		$("input[name=blue]").val(blue);
+
+		$("#color").css("background-color", background);
+		console.log(background);
+		sendColorValues(red, green, blue);
+	});
+
+	$(document).on("click", ".random", function () {
+		var red = Math.floor((Math.random() * 100));
+		var green = Math.floor((Math.random() * 100));
+		var blue = Math.floor((Math.random() * 100));
+
+		$("input[name=red]").val(red);
+		$("input[name=green]").val(green);
+		$("input[name=blue]").val(blue);
 		
+		updateColor();
+
 		sendColorValues(red, green, blue);
 	});
 });

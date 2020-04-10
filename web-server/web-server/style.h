@@ -8,7 +8,7 @@ String STYLE = R"=====(
     border: none;
 }
 
-.addFave {
+button {
     border-radius: 10px;
     padding: 1%;
     font-size: 125%;
@@ -22,7 +22,7 @@ String STYLE = R"=====(
 body {
     padding: 0;
     margin: 0;
-    background-color: rgb(0, 0, 0, 0.8);
+    background-color: #2E2E2E;
 }
 
 .container {

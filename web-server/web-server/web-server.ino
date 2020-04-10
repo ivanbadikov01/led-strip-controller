@@ -5,7 +5,7 @@
 #include "script.h"
 #include "style.h"
 #define NUM_LEDS 120
-#define PIN 5
+#define D5 14
 CRGB leds[NUM_LEDS];
 byte favorites[100][3];
 int ind;
@@ -15,13 +15,14 @@ byte blue = 255;
 int brightness = 16;
 bool isConnected;
 ESP8266WiFiMulti wifiMulti;
+bool runRainbow = false;
 
 ESP8266WebServer server(80);   //Web server object. Will be listening in port 80 (default for HTTP)
 
 void setup() {
   ind = 0;
 
-  FastLED.addLeds<WS2811, PIN, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
+  FastLED.addLeds<WS2811, D5, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(brightness);
 
   Serial.begin(115200);  
@@ -56,6 +57,7 @@ void setup() {
   server.on("/addToFavorite", handleFavoriteColor);
   server.on("/changeBrightness", handleBrightness);
   server.on("/changeColor", handleQuery);
+  server.on("/rainbow", handleRainbow);
 
   server.begin();                                       //Start the server
   Serial.println("Server listening");
@@ -66,6 +68,9 @@ void setup() {
 
 void loop() {
   server.handleClient();    //Handling of incoming requests
+  if (runRainbow) {
+    rainbow();
+  }
 }
 
 void handleRoot() {
@@ -80,14 +85,17 @@ void handleQuery() {
   green = server.arg("green").toInt();
   blue = server.arg("blue").toInt();
 
-  setAll(red, green, blue);
+  //setAll(red, green, blue);
+  //fadeInFadeOut();
+  setEach();
+  runRainbow = false;
 
   server.send(200, "text/plain", "");
 }
 
 void handleBrightness() {
-  brightness = server.arg("brightness").toInt() / 4;
-  setBrightness(brightness);
+  graduallyChangeBrightness();
+  runRainbow = false;
 
   server.send(200, "text/plain", "");
 }
@@ -96,10 +104,17 @@ void handleFavoriteColor() {
   red = server.arg("red").toInt();
   green = server.arg("green").toInt();
   blue = server.arg("blue").toInt();
+  runRainbow = false;
 
   addFavoriteColor(red, green, blue);
 
   server.send(200, "text/plain", "");
+}
+
+void handleRainbow() {
+  server.send(200, "text/plain", "");
+  rainbow();
+
 }
 
 void setPixel(int index, byte red, byte green, byte blue) {
@@ -128,6 +143,14 @@ void fadeInFadeOut() {
   for (int i = 0; i <= b - 10; i++) {
     brightness += 1;
     setBrightness(brightness);
+  }
+}
+
+void setEach(){
+  for (int i = 0; i < NUM_LEDS; i++) {
+    setPixel(i, red, green, blue);
+    FastLED.delay(5);
+    FastLED.show();
   }
 }
 
@@ -177,7 +200,7 @@ String generateContent() {
   page_content += createField("range", "green", "color", green);
   page_content += createField("range", "blue", "color", blue);
   page_content += createField("range", "brightness", "brightness", brightness);
-  page_content += "</form><span id='r' class='values'>R: </span><span id='g' class='values'>G: </span><span id='b' class='values'>B: </span><span id='brightness' class='values'>Brightness : </span><br><div id='color'></div><div><button class='addFave'>Add to favorite</button></div></div>";
+  page_content += "</form><span id='r' class='values'>R: </span><span id='g' class='values'>G: </span><span id='b' class='values'>B: </span><span id='brightness' class='values'>Brightness : </span><br><div id='color'></div><div><button class='random'>Random</button> <button class='addFave'>Add to favorite</button></div></div>";
   page_content += "<div class='favorites'><p>Favorite colors:</p>";
   
     for (int i = 1; i <= ind; i++)
@@ -231,4 +254,19 @@ String generateButton(int index, int red, int green, int blue) {
   output += ");'></button>";
 
   return output;
+}
+
+void rainbow() {
+  runRainbow = true;
+    for (int i = 0; i < 100; i+=1) {
+      if(!runRainbow) {
+        break; 
+      }
+      uint8_t hue = beatsin8(i, 0, 255);
+      fill_rainbow(leds, NUM_LEDS, hue, 5);
+      FastLED.show();
+      FastLED.delay(100);
+      server.handleClient();
+  }
+  Serial.println("Finished rainbow effect.");
 }
