@@ -67,7 +67,7 @@ $(document).ready(function ( ) {
 		sendColorValues(red, green, blue);
 	});
 
-	$(document).on("click", ".random", function () {
+	$(".random").click( function () {
 		var red = Math.floor((Math.random() * 100));
 		var green = Math.floor((Math.random() * 100));
 		var blue = Math.floor((Math.random() * 100));
@@ -79,6 +79,21 @@ $(document).ready(function ( ) {
 		updateColor();
 
 		sendColorValues(red, green, blue);
+	});
+
+	$(".rainbow").click(function () { 
+		sendRainbow();
+		
+	});
+
+	$(".twinkle").click(function () { 
+		sendTwinkle();
+		
+	});
+
+	$(".meteor").click(function () { 
+		sendMeteor();
+		
 	});
 });
 
@@ -149,5 +164,35 @@ function sendFavoriteColor (red, green, blue) {
 		data: {red : red, green : green, blue : blue},
 		type: 'post'
 	});
+}
+
+function sendRainbow() {
+	var url = root + "/rainbow";
+
+	$.ajax({
+		url : url,
+		data: {},
+		type: 'post'
+	})
+}
+
+function sendTwinkle() {
+	var url = root + "/twinkle";
+
+	$.ajax({
+		url : url,
+		data: {},
+		type: 'post'
+	})
+}
+
+function sendMeteor() {
+	var url = root + "/meteor";
+
+	$.ajax({
+		url : url,
+		data: {},
+		type: 'post'
+	})
 }
 )=====";

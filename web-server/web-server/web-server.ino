@@ -15,7 +15,7 @@ byte blue = 255;
 int brightness = 16;
 bool isConnected;
 ESP8266WiFiMulti wifiMulti;
-bool runRainbow = false;
+int effectInd = 0;
 
 ESP8266WebServer server(80);   //Web server object. Will be listening in port 80 (default for HTTP)
 
@@ -32,8 +32,7 @@ void setup() {
   while (wifiMulti.run() != WL_CONNECTED) { //Wait for connection
     delay(500);
     
-    Serial.print("Waiting to connect… ");
-    Serial.println((millis() / 1000));
+    Serial.println("Waiting to connect… ");
     
     if ((millis() / 1000) >= 30) {
       isConnected = false;
@@ -58,6 +57,8 @@ void setup() {
   server.on("/changeBrightness", handleBrightness);
   server.on("/changeColor", handleQuery);
   server.on("/rainbow", handleRainbow);
+  server.on("/twinkle", handleTwinkle);
+  server.on("/meteor", handleMeteor);
 
   server.begin();                                       //Start the server
   Serial.println("Server listening");
@@ -67,9 +68,19 @@ void setup() {
 }
 
 void loop() {
-  server.handleClient();    //Handling of incoming requests
-  if (runRainbow) {
-    rainbow();
+  switch (effectInd)
+  { 
+  case 1: rainbow();
+    break;
+
+  case 2: twinkleRandom();
+    break;
+  
+  case 3: meteorRain();
+    break;
+  
+  default: server.handleClient();    //Handling of incoming requests
+    break;
   }
 }
 
@@ -85,17 +96,14 @@ void handleQuery() {
   green = server.arg("green").toInt();
   blue = server.arg("blue").toInt();
 
-  //setAll(red, green, blue);
-  //fadeInFadeOut();
   setEach();
-  runRainbow = false;
+  effectInd = 0;
 
   server.send(200, "text/plain", "");
 }
 
 void handleBrightness() {
   graduallyChangeBrightness();
-  runRainbow = false;
 
   server.send(200, "text/plain", "");
 }
@@ -104,7 +112,6 @@ void handleFavoriteColor() {
   red = server.arg("red").toInt();
   green = server.arg("green").toInt();
   blue = server.arg("blue").toInt();
-  runRainbow = false;
 
   addFavoriteColor(red, green, blue);
 
@@ -112,9 +119,22 @@ void handleFavoriteColor() {
 }
 
 void handleRainbow() {
-  server.send(200, "text/plain", "");
+  fadeAll();
+  effectInd = 1;
   rainbow();
+  maxAll();
+  
+  server.send(200, "text/plain", "");
+}
 
+void handleTwinkle() {
+  effectInd = 2;
+  server.send(200, "text/plain", "");
+}
+
+void handleMeteor(){
+  effectInd = 3;
+  server.send(200, "text/plain", "");
 }
 
 void setPixel(int index, byte red, byte green, byte blue) {
@@ -164,10 +184,6 @@ void graduallyChangeBrightness() {
   int br = brightness;
   int newBrightness = server.arg("brightness").toInt() / 4; 
 
-  Serial.print(br);
-  Serial.print(" - ");
-  Serial.print(newBrightness);
-
   if (newBrightness == 0) {
     brightness = 0;
     setBrightness(brightness);  
@@ -200,7 +216,7 @@ String generateContent() {
   page_content += createField("range", "green", "color", green);
   page_content += createField("range", "blue", "color", blue);
   page_content += createField("range", "brightness", "brightness", brightness);
-  page_content += "</form><span id='r' class='values'>R: </span><span id='g' class='values'>G: </span><span id='b' class='values'>B: </span><span id='brightness' class='values'>Brightness : </span><br><div id='color'></div><div><button class='random'>Random</button> <button class='addFave'>Add to favorite</button></div></div>";
+  page_content += "</form><span id='r' class='values'>R: </span><span id='g' class='values'>G: </span><span id='b' class='values'>B: </span><span id='brightness' class='values'>Brightness : </span><br><div id='color'></div><div><button class='random'>Random</button> <button class='addFave'>Add to favorite</button> <button class='rainbow'>Rainbow</button> <button class='twinkle'>Twinkle</button> <button class='meteor'>Meteor</button></div></div>";
   page_content += "<div class='favorites'><p>Favorite colors:</p>";
   
     for (int i = 1; i <= ind; i++)
@@ -257,16 +273,69 @@ String generateButton(int index, int red, int green, int blue) {
 }
 
 void rainbow() {
-  runRainbow = true;
-    for (int i = 0; i < 100; i+=1) {
-      if(!runRainbow) {
-        break; 
+  uint8_t hue = beat8(40, 255);
+  fill_rainbow(leds, NUM_LEDS, hue, 5);
+  FastLED.show();
+  FastLED.delay(10);
+  server.handleClient();
+}
+
+void twinkleRandom() {
+ 
+  setPixel(random(NUM_LEDS), random(0,255), random(0,255), random(0,255));
+  FastLED.show();
+  FastLED.delay(125);
+
+  server.handleClient();
+}
+
+void meteorRain() {  
+  setAll(0,0,0);
+ 
+  for(int i = 0; i < NUM_LEDS+NUM_LEDS; i++) {
+   
+   
+    // fade brightness all LEDs one step
+    for(int j=0; j<NUM_LEDS; j++) {
+      if( random(10) > 5 ) {
+        fadeToBlack(j, 64 );        
       }
-      uint8_t hue = beatsin8(i, 0, 255);
-      fill_rainbow(leds, NUM_LEDS, hue, 5);
-      FastLED.show();
-      FastLED.delay(100);
-      server.handleClient();
+    }
+   
+    // draw meteor
+    for(int j = 0; j < 10; j++) {
+      if( ( i-j <NUM_LEDS) && (i-j>=0) ) {
+        setPixel(i-j, 0xff, 0x87, 0x9D);
+      }
+    }
+   
+    FastLED.show();
+    FastLED.delay(30);
+
+    server.handleClient();
+    if(effectInd != 3) {
+      return;
+    }
   }
-  Serial.println("Finished rainbow effect.");
+}
+
+void fadeToBlack(int i, byte value) {
+  leds[i].fadeToBlackBy( value );
+}
+
+void fadeAll() {
+  for (int i = brightness; i >= 0 ; i--) {
+    setBrightness(i);
+    FastLED.delay(5);
+  }
+  
+}
+
+void maxAll() {
+  for (int i = 1; i <= brightness; i += 1)
+  {
+    setBrightness(i);
+    FastLED.delay(5);
+  }
+  
 }
